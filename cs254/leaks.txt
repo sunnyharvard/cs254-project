@@ -1,0 +1,214 @@
+#include <math.h>
+#include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+#include <unistd.h>
+
+#define LIST_SIZE 5
+
+// Shared list and previous list for comparison
+int list[LIST_SIZE];
+int prev_list[LIST_SIZE];
+float q = 0.1;
+
+// Mutex for synchronizing list access
+pthread_mutex_t list_mutex;
+
+// Fibonacci (target func example)
+long long fibonacci(int n) {
+  if (n <= 1)
+    return n;
+  return fibonacci(n - 1) + fibonacci(n - 2);
+}
+
+// Timing leak where output depends on secret
+int diff_output_timing_leak(int secret) {
+  int result = 0;
+  for (int i = 0; i < secret; i++) {
+    result += (fibonacci(i % 20)) % 5;
+  }
+  return result;
+}
+
+// Timing leak where output is constant
+int same_output_timing_leak(int secret) {
+  int result = 0;
+  for (int i = 0; i < secret; i++) {
+    result += (fibonacci(i % 20)) % 5;
+  }
+  return 0;
+}
+
+// Black box mitigator function that processes secrets and updates the list
+int black_box_mitigator(int (*target_function)(int),
+                        unsigned long long secrets[]) {
+  // Allocate array to store the outputs
+  int *outputs = malloc(LIST_SIZE * sizeof(int));
+
+  // Iterate through secrets and call the target function, updating output list
+  // every q seconds
+  for (int i = 0; i < LIST_SIZE; i++) {
+    outputs[i] = target_function(secrets[i]);
+    pthread_mutex_lock(&list_mutex);
+    list[i] = outputs[i];
+    pthread_mutex_unlock(&list_mutex);
+  }
+
+  free(outputs);
+  return 0;
+}
+
+// Thread function to print the list at intervals of q
+void *q_interval(void *arg) {
+  clock_t start_time = clock();
+  while (1) {
+    pthread_mutex_lock(&list_mutex);
+
+    // Print the current list
+    printf("Current List: ");
+    for (int i = 0; i < LIST_SIZE; i++) {
+      printf("%d ", list[i]);
+    }
+    printf("\n");
+    clock_t current_time = clock();
+    double time_elapsed = (double)(current_time - start_time) / CLOCKS_PER_SEC;
+
+    // Print elapsed time since program started
+    printf(" | Time elapsed: %f seconds\n", time_elapsed);
+
+    // Compare current list with previous list
+    int is_same = 1;
+    for (int i = 0; i < LIST_SIZE; i++) {
+      if (list[i] != prev_list[i]) {
+        is_same = 0;
+        break;
+      }
+    }
+
+    if (is_same) {
+      q *= 2;
+      if (q > 16)
+        q = 16; // Cap q to prevent excessive delay
+      printf("No change detected. Doubling q to %.2f seconds.\n", q);
+    } else {
+      q = 0.1; // Reset q
+      printf("Change detected. Resetting q to %.2f seconds.\n", q);
+    }
+
+    // Copy current list to previous list
+    for (int i = 0; i < LIST_SIZE; i++) {
+      prev_list[i] = list[i];
+    }
+
+    pthread_mutex_unlock(&list_mutex);
+
+    sleep(q); // Sleep for q seconds before next print
+  }
+  return NULL;
+}
+
+int main(void) {
+  unsigned long long secrets[] = {pow(2, 5), pow(2, 10), pow(2, 15), pow(2, 20),
+                                  pow(2, 25)};
+
+  // Initialize list as all 0s
+  for (int i = 0; i < LIST_SIZE; i++) {
+    list[i] = 0;
+  }
+
+  // Initialize the mutex
+  if (pthread_mutex_init(&list_mutex, NULL) != 0) {
+    perror("Mutex initialization failed");
+    return 1;
+  }
+
+  // Create the thread to print the list at intervals of q
+  pthread_t print_thread;
+  if (pthread_create(&print_thread, NULL, q_interval, NULL) != 0) {
+    perror("Failed to create print thread");
+    return 1;
+  }
+
+  // Run the black box mitigator to process the secrets and update the list
+  black_box_mitigator(diff_output_timing_leak, secrets);
+
+  pthread_join(print_thread, NULL);
+  pthread_mutex_destroy(&list_mutex);
+
+  return 0;
+}
+
+// FUTURE WORK:
+// take program, only look at public info, make guess at how long program should
+// take. when off the guess => make the delay.  use LLM to make guess of q + see
+// where timing leak is + insert delay??
+// new mitgation stat => liek second paper + add the lang context
+
+#include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+#include <unistd.h>
+
+long long fibonacci(int n) {
+  if (n <= 1)
+    return n;
+  return fibonacci(n - 1) + fibonacci(n - 2);
+}
+
+// no timing leak
+#define MAX_SECRET 1048576
+int no_timing_leak(int secret) {
+  int result = 0;
+  for (int i = 0; i < MAX_SECRET; i++) {
+    int mask = (i < secret); // 1 if i < secret, 0 otherwise
+    result += mask * ((fibonacci(i % 20)) % 5);
+  }
+  return result;
+}
+
+// timing leak
+// low-level output same. timing leak based on high-level input
+int diff_output_timing_leak(int secret) {
+  int placeholder;
+  for (int i = 0; i < secret; i++) { // runs secret times
+    placeholder += (fibonacci(i % 20)) % 5;
+  }
+  return placeholder;
+}
+
+int same_output_timing_leak(int secret) {
+  int placeholder;
+  for (int i = 0; i < secret; i++) { // runs secret times
+    placeholder += (fibonacci(i % 20)) % 5;
+  }
+  return 0;
+}
+
+int main(void) {
+  unsigned long long secrets[] = {pow(2, 1), pow(2, 5), pow(2, 10), pow(2, 15),
+                                  pow(2, 20)};
+  int num_inputs = sizeof(secrets) / sizeof(secrets[0]);
+
+  printf("No timing leaks:\n");
+  for (int i = 0; i < num_inputs; i++) {
+    clock_t start = clock();
+    no_timing_leak(secrets[i]);
+    clock_t end = clock();
+    double time_spent = (double)(end - start) / CLOCKS_PER_SEC;
+    printf("Time spent for %llu: %f\n", secrets[i], time_spent);
+  }
+
+  printf("Low level timing leaks:\n");
+  for (int i = 0; i < num_inputs; i++) {
+    clock_t start = clock();
+    diff_output_timing_leak(secrets[i]);
+    clock_t end = clock();
+    double time_spent = (double)(end - start) / CLOCKS_PER_SEC;
+    printf("Time spent for %llu: %f\n", secrets[i], time_spent);
+  }
+  return 0;
+}
+
+
