@@ -5,10 +5,10 @@
 #include <time.h>
 #include <unistd.h>
 
-#define LIST_SIZE 5
 #define MAX_SECRET 1048576
 
-int queue[LIST_SIZE];
+// Dynamically calculated size based on the secrets array
+int *queue;
 int queue_size = 0;
 float q = 0.1;
 int total_printed = 0;
@@ -62,20 +62,20 @@ int same_output_timing_leak(int secret) {
 
 // Black box mitigator function
 int black_box_mitigator(int (*target_function)(int),
-                        unsigned long long secrets[]) {
-  int *outputs = malloc(LIST_SIZE * sizeof(int));
+                        unsigned long long secrets[], int secrets_size) {
+  int *outputs = malloc(secrets_size * sizeof(int));
 
-  for (int i = 0; i < LIST_SIZE; i++) {
+  for (int i = 0; i < secrets_size; i++) {
     outputs[i] = target_function(secrets[i]);
     pthread_mutex_lock(&queue_mutex);
 
-    if (queue_size < LIST_SIZE) {
+    if (queue_size < secrets_size) {
       queue[queue_size++] = outputs[i];
     } else {
-      for (int j = 1; j < LIST_SIZE; j++) {
+      for (int j = 1; j < secrets_size; j++) {
         queue[j - 1] = queue[j];
       }
-      queue[LIST_SIZE - 1] = outputs[i];
+      queue[secrets_size - 1] = outputs[i];
     }
 
     pthread_mutex_unlock(&queue_mutex);
@@ -85,7 +85,7 @@ int black_box_mitigator(int (*target_function)(int),
   return 0;
 }
 
-// thread function to print the queue at intervals of q
+// Thread function to print the queue at intervals of q
 void *q_interval(void *arg) {
   clock_t start_time = clock();
   while (1) {
@@ -101,13 +101,14 @@ void *q_interval(void *arg) {
       double time_elapsed =
           (double)(current_time - start_time) / CLOCKS_PER_SEC;
       int popped = queue[0];
-      for (int i = 1; i < LIST_SIZE; i++) {
+      for (int i = 1; i < queue_size; i++) {
         queue[i - 1] = queue[i];
       }
       queue_size--;
       printf("Output: %d\n", popped);
       printf("Time spent: %f seconds\n", time_elapsed);
       total_printed++;
+
       if (queue_size == 0) {
         q /= 2;
         printf("q halved to %f\n", q);
@@ -118,11 +119,9 @@ void *q_interval(void *arg) {
     pthread_mutex_unlock(&queue_mutex);
 
     // Check if we've printed all outputs
-    if (total_printed >=
-        LIST_SIZE) // Stop once we've printed the number of secrets
-    {
+    if (total_printed >= queue_size && total_printed >= *(int *)arg) {
       printf("All outputs printed, exiting...\n");
-      break;
+      break; // Exit once all elements are printed
     }
 
     sleep(q); // Sleep for q seconds before next print
@@ -136,29 +135,35 @@ int main(void) {
                                   pow(2, 20), pow(2, 21)};
   int secrets_size = sizeof(secrets) / sizeof(secrets[0]);
 
-  // Initialize queue as all 0s
-  for (int i = 0; i < LIST_SIZE; i++) {
-    queue[i] = 0;
+  // Dynamically allocate memory for the queue based on secrets_size
+  queue = malloc(secrets_size * sizeof(int));
+
+  if (queue == NULL) {
+    perror("Failed to allocate memory for queue");
+    return 1;
   }
 
   // Initialize the mutex
   if (pthread_mutex_init(&queue_mutex, NULL) != 0) {
     perror("Mutex initialization failed");
+    free(queue); // Free allocated memory for queue
     return 1;
   }
 
   // Create the thread to print the queue at intervals of q
   pthread_t print_thread;
-  if (pthread_create(&print_thread, NULL, q_interval, NULL) != 0) {
+  if (pthread_create(&print_thread, NULL, q_interval, &secrets_size) != 0) {
     perror("Failed to create print thread");
+    free(queue); // Free allocated memory for queue
     return 1;
   }
 
   // Run the black box mitigator to process the secrets and update the queue
-  black_box_mitigator(diff_output_timing_leak, secrets);
+  black_box_mitigator(diff_output_timing_leak, secrets, secrets_size);
 
   pthread_join(print_thread, NULL);
   pthread_mutex_destroy(&queue_mutex);
+  free(queue); // Free allocated memory for queue
 
   return 0;
 }
