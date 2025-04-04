@@ -95,12 +95,6 @@ void *q_interval(void *arg) {
     /*logic here: we want to randomize q everytime there is information to be output. We are not keeping track of a q. 
     We will show that this randomization method is inefficient, and does not show a logarithmic bound (in actuality, no bound at all)
    */
-    // if (queue_size - queue_size_prev < 0 && !q_updated) { //randomize q if no information output at epoch
-    //   q =  ((float)rand()/(float)(RAND_MAX)) * 8.0; //get random q (float) between 0 and 8 
-    //   printf("q time randomized %f\n", q); //print when we have nothing is q, event expected
-    //   q_updated = 1;
-    // } 
-
     if (queue_size >= 1) {
         clock_t current_time = clock();
         double time_elapsed =
