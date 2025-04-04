@@ -88,35 +88,35 @@ int black_box_mitigator(int (*target_function)(int),
 
 // Thread function to print the queue at intervals of q
 void *q_interval(void *arg) {
-  clock_t start_time = clock();
   while (1) {
-    pthread_mutex_lock(&queue_mutex);
     /*logic here: we want to randomize q everytime there is information to be output. We are not keeping track of a q. 
     We will show that this randomization method is inefficient, and does not show a logarithmic bound (in actuality, no bound at all)
    */
-    int popped = -1;
-    double time_elapsed = 0;
     if (queue_size >= 1) {
-        clock_t current_time = clock();
-        time_elapsed = (double)(current_time - start_time) / CLOCKS_PER_SEC;
-        popped = queue[0];
+        //start a new "cycle"
+        struct timespec tstart={0,0}, tend={0,0};
+        clock_gettime(CLOCK_MONOTONIC, &tstart);
+        // clock_t start_time = time(NULL);
+        q =  ((float)rand()/(float)(RAND_MAX)) * 8.0; //get new random q (float) between 0 and 8 for next cycle
+
+        usleep((useconds_t)(q*1e6)); // Sleep for q seconds before releasing next output
+
+        clock_gettime(CLOCK_MONOTONIC, &tend);
+        double time_elapsed = (double)(tend.tv_sec + 1.0e-9*tend.tv_nsec) - ((double)tstart.tv_sec + 1.0e-9*tstart.tv_nsec);
+        // double time_elapsed = (double)(time(NULL) - start_time);
+        pthread_mutex_lock(&queue_mutex);
+        int popped = queue[0];
         for (int i = 1; i < queue_size; i++) {
           queue[i - 1] = queue[i];
         }
         queue_size--;
-    }
-    pthread_mutex_unlock(&queue_mutex);
+        pthread_mutex_unlock(&queue_mutex);
 
-    if (popped != -1){ //if popped 
         //print previous cycle's timing
         printf("q time randomized %f\n", q); //print when we have nothing is q, event expected
         printf("Output: %d\n", popped);
         printf("Time spent: %f seconds\n\n", time_elapsed);
         total_printed++;    
-
-        //start a new "cycle"
-        start_time = clock();
-        q =  ((float)rand()/(float)(RAND_MAX)) * 8.0; //get new random q (float) between 0 and 8 for next cycle
     }
 
     // Check if we've printed all outputs
@@ -124,14 +124,12 @@ void *q_interval(void *arg) {
       printf("All outputs printed, exiting...\n");
       break; // Exit once all elements are printed
     }
-
-    usleep((useconds_t)(q*1e6)); // Sleep for q seconds before next print
   }
   return NULL;
 }
 
 int main(void) {
-    srand(seed); //set seed for testing
+  srand(seed); //set seed for testing
   flush_cache();
   unsigned long long secrets[] = {pow(2, 17), pow(2, 18), pow(2, 19),
                                   pow(2, 20), pow(2, 21)};
