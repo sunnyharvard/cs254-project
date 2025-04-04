@@ -8,6 +8,7 @@
 #define MAX_SECRET 1048576
 
 // Dynamically calculated size based on the secrets array
+int seed = 2540;
 int *queue;
 int queue_size = 0;
 float q = 0.1;
@@ -90,31 +91,33 @@ void *q_interval(void *arg) {
   clock_t start_time = clock();
   while (1) {
     pthread_mutex_lock(&queue_mutex);
-    // If the queue is empty, double q
-
     /*logic here: we want to randomize q everytime there is information to be output. We are not keeping track of a q. 
     We will show that this randomization method is inefficient, and does not show a logarithmic bound (in actuality, no bound at all)
    */
+    int popped = -1;
+    double time_elapsed = 0;
     if (queue_size >= 1) {
         clock_t current_time = clock();
-        double time_elapsed =
-            (double)(current_time - start_time) / CLOCKS_PER_SEC;
-        int popped = queue[0];
+        time_elapsed = (double)(current_time - start_time) / CLOCKS_PER_SEC;
+        popped = queue[0];
         for (int i = 1; i < queue_size; i++) {
           queue[i - 1] = queue[i];
         }
         queue_size--;
-        q =  ((float)rand()/(float)(RAND_MAX)) * 8.0; //get random q (float) between 0 and 8
-        printf("q time randomized %f\n", q); //print when we have nothing is q, event expected
- 
-        printf("Output: %d\n", popped);
-        printf("Time spent: %f seconds\n", time_elapsed);
-        total_printed++;
-  
-        start_time = clock();
     }
-
     pthread_mutex_unlock(&queue_mutex);
+
+    if (popped != -1){ //if popped 
+        //print previous cycle's timing
+        printf("q time randomized %f\n", q); //print when we have nothing is q, event expected
+        printf("Output: %d\n", popped);
+        printf("Time spent: %f seconds\n\n", time_elapsed);
+        total_printed++;    
+
+        //start a new "cycle"
+        start_time = clock();
+        q =  ((float)rand()/(float)(RAND_MAX)) * 8.0; //get new random q (float) between 0 and 8 for next cycle
+    }
 
     // Check if we've printed all outputs
     if (total_printed >= queue_size && total_printed >= *(int *)arg) {
@@ -122,12 +125,13 @@ void *q_interval(void *arg) {
       break; // Exit once all elements are printed
     }
 
-    sleep(q); // Sleep for q seconds before next print
+    usleep((useconds_t)(q*1e6)); // Sleep for q seconds before next print
   }
   return NULL;
 }
 
 int main(void) {
+    srand(seed); //set seed for testing
   flush_cache();
   unsigned long long secrets[] = {pow(2, 17), pow(2, 18), pow(2, 19),
                                   pow(2, 20), pow(2, 21)};
