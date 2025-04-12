@@ -94,8 +94,6 @@ void *q_interval(void *arg) {
     if (queue_size == 0) {
       q *= 2;
       printf("q doubled to %f\n", q);
-      if (q > 16) // Cap q to prevent excessive delay
-        q = 16;
     } else if (queue_size >= 1) {
       clock_t current_time = clock();
       double time_elapsed =
