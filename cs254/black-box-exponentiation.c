@@ -10,7 +10,7 @@
 // Dynamically calculated size based on the secrets array
 int *queue;
 int queue_size = 0;
-float initial_q = 0.1;
+const float initial_q = 0.1;
 float q = initial_q;
 int total_printed = 0;
 
