@@ -94,7 +94,8 @@ void *q_interval(void *arg) {
     if (queue_size == 0) {
       q *= 2;
       printf("q doubled to %f\n", q);
-    } else if (queue_size >= 1) {
+    } 
+    else if (queue_size >= 1) {
       clock_t current_time = clock();
       double time_elapsed =
           (double)(current_time - start_time) / CLOCKS_PER_SEC;
@@ -107,7 +108,7 @@ void *q_interval(void *arg) {
       printf("Time spent: %f seconds\n", time_elapsed);
       total_printed++;
 
-      if (queue_size == 0) {
+      if (queue_size >= 1) {
         q /= 2;
         printf("q halved to %f\n", q);
       }
