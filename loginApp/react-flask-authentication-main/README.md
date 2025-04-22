@@ -14,7 +14,8 @@ $ cd api-server-flask
 $ docker-compose up --build  # Start with Docker
 ```
 
-At this point, the API should be up & running at `http://localhost:5000`, and we can test the interface using POSTMAN or `curl`.
+At this point, the API should be up & running at `http://localhost:2000`, and we can test the interface using POSTMAN or `curl`. 
+<!-- changed localhost port to address airplay;ay -->
 
 <br />
 

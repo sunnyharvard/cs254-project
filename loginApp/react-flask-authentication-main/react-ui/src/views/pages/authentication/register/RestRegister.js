@@ -132,6 +132,7 @@ const RestRegister = ({ ...others }) => {
                                 if (response.data.success) {
                                     history.push('/login');
                                 } else {
+                                    console.log(response.data.msg )
                                     setStatus({ success: false });
                                     setErrors({ submit: response.data.msg });
                                     setSubmitting(false);
