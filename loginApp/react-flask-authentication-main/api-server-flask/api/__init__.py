@@ -5,6 +5,9 @@ Copyright (c) 2019 - present AppSeed.us
 
 import os, json
 
+from dotenv import load_dotenv
+load_dotenv()
+
 from flask import Flask
 from flask_cors import CORS
 
