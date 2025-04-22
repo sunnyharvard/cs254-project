@@ -16,6 +16,34 @@ DUMMY_USERNAME = "apple"
 DUMMY_EMAIL = "apple@apple.com"
 DUMMY_PASS = "newpassword" 
 
+# when new user creates account, we save their info in a dictionary:
+"""
+super user 
+DUMMY_USERNAME: {
+    DUMMY_EMAIL,
+    HASHED_DUMMY_PASS1,
+    HASHED_DUMMY_PASS2,
+    HASHED_DUMMY_PASS3,
+    HASHED_DUMMY_PASS4,
+    HASHED_DUMMY_PASS5,
+}
+"""
+
+# when user logs in, we check their hashed inputted passwords
+# [input1, input2, input3, input4, input5]
+# hash each => [T, T, F, T, T], output when finish specific one
+# loop through and if has one F => return F
+
+# we take in password, then hash it using fib program (so longer password = bigger fib) by adding each character's ascii out
+# **** we have to have an upper bound to this for space constraints tho? -> sunny try to figure out an upper bound for password length
+# 5 step password, and then we output "finished checking password #i" even if wrong
+# hit = finish checking a password (password #i matches in our hash), miss = haven't finished checking the password
+# after all 5 passwords are done, return success logging in or not (T/F, doesnt affect timing stuff)
+
+# write function to time output of how long it takes to check the passwords
+# time all of the different mitigation black boxes on our toy fib hash program
+# see which one has fewest epoch changes (and thus least timing leaks)
+
 @pytest.fixture
 def client():
     with app.test_client() as client:
