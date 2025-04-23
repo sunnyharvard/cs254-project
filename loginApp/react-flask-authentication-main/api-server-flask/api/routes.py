@@ -25,13 +25,13 @@ rest_api = Api(version="1.0", title="Users API")
     Flask-Restx models for api request and response data
 """
 
-signup_model = rest_api.model('SignUpModel', {"phone_number": fields.String(required=True, min_length=2, max_length=9),
+signup_model = rest_api.model('SignUpModel', {"phone_number": fields.String(required=True, min_length=9, max_length=11),
                                               "username": fields.String(required=True, min_length=2, max_length=32),
                                               "email": fields.String(required=True, min_length=4, max_length=64),
                                               "password": fields.String(required=True, min_length=4, max_length=16)
                                               })
 
-login_model = rest_api.model('LoginModel', {"phone_number": fields.String(required=True, min_length=2, max_length=9),
+login_model = rest_api.model('LoginModel', {"phone_number": fields.String(required=True, min_length=9, max_length=11),
                                               "username": fields.String(required=True, min_length=2, max_length=32),
                                               "email": fields.String(required=True, min_length=4, max_length=64),
                                               "password": fields.String(required=True, min_length=4, max_length=16)
@@ -46,6 +46,7 @@ user_edit_model = rest_api.model('UserEditModel', {"userID": fields.String(requi
 """
    Helper function for JWT token required
 """
+supabase: Client = create_client(BaseConfig.DB_HOST, BaseConfig.DB_ANONKEY)
 
 def token_required(f):
 
@@ -95,7 +96,7 @@ class Register(Resource):
        Creates a new user by taking 'signup_model' input
     """
 
-    # @rest_api.expect(signup_model, validate=True)
+    #@rest_api.expect(signup_model, validate=True)
     # def post(self):
 
     #     req_data = request.get_json()
@@ -113,33 +114,28 @@ class Register(Resource):
 
     #     new_user.set_password(_password)
     #     new_user.save()
-    supabase: Client = create_client(BaseConfig.DB_HOST, BaseConfig.DB_ANONKEY)
     @rest_api.expect(signup_model, validate=True)
     def post(self):
-        input_data = request.get_json()
+        req_data = request.get_json()
+        
+        phone_number = req_data.get("phone_number")
 
         try:
-            # Insert into "profiles" table
-            response = supabase.table("profiles").insert({
-                "phone_number": input_data.get("phone_number"),
-                "username": input_data.get("username"),
-                "email": input_data.get("email"),
-                "password": input_data.get("password"),
-            }).execute()
+            response = (
+                supabase.table("Profiles").insert({
+                    "phone_number": phone_number,
+                    "username": req_data.get("username"),
+                    "email": req_data.get("email"),
+                    "password": req_data.get("password"),
+                    })
+                .execute())
 
             if response.get("error"):
-                print(f"Error: {response['error']['message']}")
+                print(f"Error (register): {response['error']['message']}")
                 return {
                     "status": "error",
                     "message": response['error']['message']
                 }
-
-            default_values = {
-                "phone_number": "",
-                "username": "",
-                "email": "",
-                "password": ""
-            }
             
             return {"success": True,
                         "msg": "The user was successfully registered"}, 200

@@ -208,20 +208,24 @@ const RestRegister = ({ ...others }) => {
                         </FormControl>
 
                         <FormControl fullWidth error={Boolean(touched.phone_number && errors.phone_number)} className={classes.loginInput}>
-                            <InputLabel htmlFor="outlined-adornment-email-register">Phone Number</InputLabel>
+                            <InputLabel htmlFor="outlined-phone-number-register">Phone Number</InputLabel>
                             <OutlinedInput
-                                id="outlined-adornment-email-register"
-                                type="phone_number"
-                                value={values.phone_number}
+                                id="outlined-adornment-phone-number-register"
                                 name="phone_number"
+                                label="Phone Number"
+                                type="text" // <--- text, not number!
+                                value={values.phone_number}
                                 onBlur={handleBlur}
-                                onChange={handleChange}
-                                inputProps={{
-                                    classes: {
-                                        notchedOutline: classes.notchedOutline
+                                onChange={(e) => {
+                                    const onlyNums = e.target.value.replace(/[^0-9]/g, ''); // <--- Enforce numbers only
+                                    handleChange({
+                                    target: {
+                                        name: 'phone_number',
+                                        value: onlyNums,
                                     }
+                                    });
                                 }}
-                            />
+                                />
                             {touched.phone_number && errors.phone_number && (
                                 <FormHelperText error id="standard-weight-helper-text--register">
                                     {' '}
