@@ -129,13 +129,6 @@ class Register(Resource):
                     "password": req_data.get("password"),
                     })
                 .execute())
-
-            if response.get("error"):
-                print(f"Error (register): {response['error']['message']}")
-                return {
-                    "status": "error",
-                    "message": response['error']['message']
-                }
             
             return {"success": True,
                         "msg": "The user was successfully registered"}, 200
