@@ -37,7 +37,7 @@ login_model = rest_api.model('LoginModel', {"phone_number": fields.String(requir
                                               "password": fields.String(required=True, min_length=4, max_length=16)
                                               })
 
-user_edit_model = rest_api.model('UserEditModel', {"userID": fields.String(required=True, min_length=1, max_length=32),
+user_edit_model = rest_api.model('UserEditModel', {"phone_number": fields.String(required=True, min_length=9, max_length=11),
                                                    "username": fields.String(required=True, min_length=2, max_length=32),
                                                    "email": fields.String(required=True, min_length=4, max_length=64)
                                                    })
@@ -121,10 +121,10 @@ class Register(Resource):
         try:
             response = (
                 supabase.table("Profiles").insert({
-                    "phone_number": req_data.get("phone_number"),
                     "username": req_data.get("username"),
                     "email": req_data.get("email"),
                     "password": req_data.get("password"),
+                    "phone_number": req_data.get("phone_number"),
                     })
                 .execute())
             
@@ -149,33 +149,40 @@ class Login(Resource):
     def post(self):
         req_data = request.get_json()
 
+        _username = req_data.get("username")
         _email = req_data.get("email")
+        _phone_number = req_data.get("phone_number")
         _password = req_data.get("password")
 
+        if not _username or not _password:
+            return {"success": False, "msg": "all fields are required."}, 400
+
         try:
-            response = supabase.table("profiles").select("*").eq("email", _email).single().execute()
+            response = supabase.table("Profiles").select("*").eq("username", _username).execute()
 
-            if response.error:
-                return {"success": False, "msg": "This email does not exist."}, 400
+            if not response.data:
+                return {"success": False, "msg": "This username does not exist."}, 400
 
-            user_data = response.data
+            userdata = response.data[0]
 
-            if not user_data:
-                return {"success": False, "msg": "This email does not exist."}, 400
+            if userdata.get("email") != _email:
+                return {"success": False, "msg": "Username and email do not match."}, 400
+
+            if userdata.get("phone_number") != _phone_number:
+                return {"success": False, "msg": "Username and phone number do not match."}, 400
 
             # check plaintext, use password hash function here!!!!
-            if user_data.get("password") != _password:
-                return {"success": False, "msg": "Wrong credentials."}, 400
+            if userdata.get("password") != _password:
+                return {"success": False, "msg": "Wrong password."}, 400
 
-            token = jwt.encode({'email': _email, 'exp': datetime.utcnow() + timedelta(minutes=30)}, BaseConfig.SECRET_KEY)
+            token = jwt.encode({'username': _username, 'exp': datetime.utcnow() + timedelta(minutes=30)}, BaseConfig.SECRET_KEY)
             
             return {
                 "success": True,
                 "token": token,
                 "user": {
-                    "id": user_data.get("id"),
-                    "username": user_data.get("username"),
-                    "email": user_data.get("email"),
+                    "username": userdata.get("username"),
+                    "email": userdata.get("email"),
                 }
             }, 200
 
