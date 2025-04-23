@@ -18,7 +18,10 @@ import {
     InputLabel,
     OutlinedInput,
     Stack,
-    Typography
+    Typography,
+    Grid,
+    TextField,
+    useMediaQuery
 } from '@material-ui/core';
 
 // third party
@@ -82,6 +85,7 @@ const RestLogin = (props, { ...others }) => {
 
     const scriptedRef = useScriptRef();
     const [checked, setChecked] = React.useState(true);
+    const matchDownSM = useMediaQuery((theme) => theme.breakpoints.down('sm'));
 
     const [showPassword, setShowPassword] = React.useState(false);
     const handleClickShowPassword = () => {
@@ -149,7 +153,29 @@ const RestLogin = (props, { ...others }) => {
             >
                 {({ errors, handleBlur, handleChange, handleSubmit, isSubmitting, touched, values }) => (
                     <form noValidate onSubmit={handleSubmit} {...others}>
-                        
+                        <Grid container spacing={matchDownSM ? 0 : 2}>
+                            <Grid item xs={12}>
+                                <TextField
+                                    fullWidth
+                                    label="Username"
+                                    margin="normal"
+                                    name="username"
+                                    id="username"
+                                    type="text"
+                                    value={values.username}
+                                    onBlur={handleBlur}
+                                    onChange={handleChange}
+                                    className={classes.loginInput}
+                                    error={touched.username && Boolean(errors.username)}
+                                />
+                                {touched.username && errors.username && (
+                                    <FormHelperText error id="standard-weight-helper-text--register">
+                                        {errors.username}
+                                    </FormHelperText>
+                                )}
+                            </Grid>
+                        </Grid>
+
                         <FormControl fullWidth error={Boolean(touched.email && errors.email)} className={classes.loginInput}>
                             <InputLabel htmlFor="outlined-adornment-email-login">Email</InputLabel>
                             <OutlinedInput
@@ -282,7 +308,7 @@ const RestLogin = (props, { ...others }) => {
                                     variant="contained"
                                     color="secondary"
                                 >
-                                    Sign IN
+                                    Sign In
                                 </Button>
                             </AnimateButton>
                         </Box>
