@@ -96,14 +96,18 @@ const RestLogin = (props, { ...others }) => {
         <React.Fragment>
             <Formik
                 initialValues={{
+                    phone_number: '',
+                    username: '',
                     email: '',
                     password: '',
                     submit: null
                 }}
                 validationSchema={Yup.object().shape({
-                    email: Yup.string().email('Must be a valid email').max(255).required('Email is required'),
-                    password: Yup.string().max(255).required('Password is required')
-                })}
+                                    phone_number: Yup.number().required('Must be a valid number').required('Phone Number is required'),
+                                    email: Yup.string().email('Must be a valid email').max(255).required('Email is required'),
+                                    username: Yup.string().required('Username is required'),
+                                    password: Yup.string().max(255).required('Password is required')
+                                })}
                 onSubmit={(values, { setErrors, setStatus, setSubmitting }) => {
                     try {
                         axios
@@ -145,6 +149,7 @@ const RestLogin = (props, { ...others }) => {
             >
                 {({ errors, handleBlur, handleChange, handleSubmit, isSubmitting, touched, values }) => (
                     <form noValidate onSubmit={handleSubmit} {...others}>
+                        
                         <FormControl fullWidth error={Boolean(touched.email && errors.email)} className={classes.loginInput}>
                             <InputLabel htmlFor="outlined-adornment-email-login">Email</InputLabel>
                             <OutlinedInput
@@ -168,7 +173,32 @@ const RestLogin = (props, { ...others }) => {
                                 </FormHelperText>
                             )}
                         </FormControl>
-
+                        <FormControl fullWidth error={Boolean(touched.phone_number && errors.phone_number)} className={classes.loginInput}>
+                            <InputLabel htmlFor="outlined-phone-number-register">Phone Number</InputLabel>
+                            <OutlinedInput
+                                id="outlined-adornment-phone-number-register"
+                                name="phone_number"
+                                label="Phone Number"
+                                type="text" // <--- text, not number!
+                                value={values.phone_number}
+                                onBlur={handleBlur}
+                                onChange={(e) => {
+                                    const onlyNums = e.target.value.replace(/[^0-9]/g, ''); // <--- get numbers only
+                                    handleChange({
+                                    target: {
+                                        name: 'phone_number',
+                                        value: onlyNums,
+                                    }
+                                    });
+                                }}
+                                />
+                            {touched.phone_number && errors.phone_number && (
+                                <FormHelperText error id="standard-weight-helper-text--register">
+                                    {' '}
+                                    {errors.phone_number}{' '}
+                                </FormHelperText>
+                            )}
+                        </FormControl>
                         <FormControl fullWidth error={Boolean(touched.password && errors.password)} className={classes.loginInput}>
                             <InputLabel htmlFor="outlined-adornment-password-login">Password</InputLabel>
                             <OutlinedInput
@@ -204,6 +234,7 @@ const RestLogin = (props, { ...others }) => {
                                 </FormHelperText>
                             )}
                         </FormControl>
+
                         <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
                             <FormControlLabel
                                 control={
