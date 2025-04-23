@@ -168,7 +168,7 @@ class Login(Resource):
                 return {"success": False, "msg": "Wrong credentials."}, 400
 
             token = jwt.encode({'email': _email, 'exp': datetime.utcnow() + timedelta(minutes=30)}, BaseConfig.SECRET_KEY)
-
+            
             return {
                 "success": True,
                 "token": token,
