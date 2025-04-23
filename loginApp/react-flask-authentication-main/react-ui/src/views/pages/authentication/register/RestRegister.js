@@ -217,7 +217,7 @@ const RestRegister = ({ ...others }) => {
                                 value={values.phone_number}
                                 onBlur={handleBlur}
                                 onChange={(e) => {
-                                    const onlyNums = e.target.value.replace(/[^0-9]/g, ''); // <--- Enforce numbers only
+                                    const onlyNums = e.target.value.replace(/[^0-9]/g, ''); // <--- get numbers only
                                     handleChange({
                                     target: {
                                         name: 'phone_number',
@@ -265,11 +265,8 @@ const RestRegister = ({ ...others }) => {
                                     }
                                 }}
                             />
-                            {touched.password && errors.password && (
-                                <FormHelperText error id="standard-weight-helper-text-password-register">
-                                    {errors.password}
-                                </FormHelperText>
-                            )}
+
+
                         </FormControl>
 
                         {strength !== 0 && (

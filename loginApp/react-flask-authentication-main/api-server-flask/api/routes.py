@@ -147,31 +147,41 @@ class Login(Resource):
 
     @rest_api.expect(login_model, validate=True)
     def post(self):
-
         req_data = request.get_json()
 
         _email = req_data.get("email")
         _password = req_data.get("password")
 
-        user_exists = Users.get_by_email(_email)
+        try:
+            response = supabase.table("profiles").select("*").eq("email", _email).single().execute()
 
-        if not user_exists:
-            return {"success": False,
-                    "msg": "This email does not exist."}, 400
+            if response.error:
+                return {"success": False, "msg": "This email does not exist."}, 400
 
-        if not user_exists.check_password(_password):
-            return {"success": False,
-                    "msg": "Wrong credentials."}, 400
+            user_data = response.data
 
-        # create access token uwing JWT
-        token = jwt.encode({'email': _email, 'exp': datetime.utcnow() + timedelta(minutes=30)}, BaseConfig.SECRET_KEY)
+            if not user_data:
+                return {"success": False, "msg": "This email does not exist."}, 400
 
-        user_exists.set_jwt_auth_active(True)
-        user_exists.save()
+            # check plaintext, use password hash function here!!!!
+            if user_data.get("password") != _password:
+                return {"success": False, "msg": "Wrong credentials."}, 400
 
-        return {"success": True,
+            token = jwt.encode({'email': _email, 'exp': datetime.utcnow() + timedelta(minutes=30)}, BaseConfig.SECRET_KEY)
+
+            return {
+                "success": True,
                 "token": token,
-                "user": user_exists.toJSON()}, 200
+                "user": {
+                    "id": user_data.get("id"),
+                    "username": user_data.get("username"),
+                    "email": user_data.get("email"),
+                }
+            }, 200
+
+        except Exception as e:
+            print(f"Login error: {str(e)}")
+            return {"success": False, "msg": "Unexpected error during login."}, 500
 
 
 @rest_api.route('/api/users/edit')
