@@ -176,12 +176,78 @@ class HalvingBlackbox:
             self.queue.put(result)
 
         return result
+    
+class ExponentialBlackbox:
+    def __init__(self, initial_q=0.1):
+        self.q = initial_q
+        self.initial_q = initial_q
+        self.queue = queue.Queue()
+        self.lock = threading.Lock()
+        self.running = False
+        self.print_thread = None
+        self.total_printed = 0
+        self.expected_outputs = 0
+
+    def start(self, expected_outputs=5):
+        self.running = True
+        self.expected_outputs = expected_outputs
+        self.print_thread = threading.Thread(target=self._print_queue)
+        self.print_thread.daemon = True
+        self.print_thread.start()
+
+    def stop(self):
+        self.running = False
+        if self.print_thread:
+            self.print_thread.join(timeout=2.0)
+
+    def flush(self):
+        flush_array = bytearray(10 * 1024 * 1024)
+        for i in range(len(flush_array)):
+            flush_array[i] = i % 256
+        _ = flush_array[0]
+
+    def _print_queue(self):
+        start_time = time.perf_counter()
+        while self.running:
+            with self.lock:
+                if self.queue.empty():
+                    self.q *= 2
+                    print(f"Queue empty. q doubled to {self.q:.4f}")
+                else:
+                    result = self.queue.get()
+                    current_time = time.perf_counter()
+                    elapsed = current_time - start_time
+                    print(f"Output: {result}")
+                    print(f"Time spent: {elapsed:.4f} seconds")
+                    self.total_printed += 1
+
+                    if not self.queue.empty():
+                        self.q = self.initial_q
+                        print(f"Queue not empty. q reset to {self.q:.4f}")
+                    start_time = time.perf_counter()
+
+            if self.total_printed >= self.expected_outputs:
+                print("All expected outputs printed. Exiting print thread.")
+                break
+
+            time.sleep(self.q)
+
+    def __call__(self, func, *args, **kwargs):
+        self.flush()  # simulate pre-work
+        result = func(*args, **kwargs)
+
+        # Add to output queue for staggered timing
+        with self.lock:
+            self.queue.put(result)
+
+        return result
 
 # Dictionary mapping mitigation names to their functions
 MITIGATION_SYSTEMS = {
     'none': lambda f, *args, **kwargs: f(*args, **kwargs),  # No mitigation
     'slow': SlowBlackbox(),  # slow
     'halving': HalvingBlackbox(),
+    'exponential': ExponentialBlackbox(),
 }
 
 # --------------- Password Storage & Verification ---------------
