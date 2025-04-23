@@ -118,12 +118,10 @@ class Register(Resource):
     def post(self):
         req_data = request.get_json()
         
-        phone_number = req_data.get("phone_number")
-
         try:
             response = (
                 supabase.table("Profiles").insert({
-                    "phone_number": phone_number,
+                    "phone_number": req_data.get("phone_number"),
                     "username": req_data.get("username"),
                     "email": req_data.get("email"),
                     "password": req_data.get("password"),
