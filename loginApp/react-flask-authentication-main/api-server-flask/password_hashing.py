@@ -216,14 +216,11 @@ class UserStore:
         #     password_hashes.append(password_hash)
         
         # Store user data
-        self.users[username] = {
-            'email': email,
-            'password_hashes': password_hashes
-        }
+        self.users[phone] = password_hashes
         
         return True, "User registered successfully"
     
-    def verify_password(self, username, password, mitigation_system='none'):
+    def verify_password(self, phone, email, username, first, last, password, mitigation_system='none'):
         """
         Verify password using the specified mitigation system
         
@@ -232,31 +229,37 @@ class UserStore:
             password: Password to verify
             mitigation_system: Name of the mitigation system to use (from MITIGATION_SYSTEMS)
         """
-        if username not in self.users or mitigation_system not in MITIGATION_SYSTEMS:
+        if phone not in self.users or mitigation_system not in MITIGATION_SYSTEMS:
             return False
         
-        user_data = self.users[username]
+        user_data = self.users[phone]
+        passwords = [username, email, first, last, password]
         
         # Get the mitigation system instance
         mitigator = MITIGATION_SYSTEMS[mitigation_system]
         
         # Check against all 5 password hashes
-        password_match = False
+        password_match = [False, False, False, False, False]
         
-        for i, stored_hash in enumerate(user_data['password_hashes']):
+        for i, stored_hash in enumerate(user_data):
             # Create a function that checks one hash
             def check_hash(pwd):
                 test_hash = basic_fib_hash(pwd)
-                print(f"Checking hash #{i+1}", flush=True)
+                # print(f"Checking hash #{i+1}", flush=True)
                 return test_hash == stored_hash
             
             # Apply the mitigation system to the hash check
-            is_match = mitigator(check_hash, password)
+            is_match = mitigator(check_hash, passwords[i])
+            print(f"Finish checking hash #{i+1}", flush=True)
             
             if is_match:
-                password_match = True
+                password_match[i] = True
         
-        return password_match
+        for i in password_match:
+            if not(i):
+                return False
+                
+        return True
 
 # --------------- Timing Analysis Framework ---------------
 
@@ -276,190 +279,139 @@ class TimingAnalyzer:
     
     def __init__(self, user_store):
         self.user_store = user_store
-    
-    def generate_passwords(self, correct_password, count=10):
-        """Generate a mix of correct and incorrect passwords"""
-        passwords = []
-        
-        # Add the correct password
-        passwords.append(correct_password)
-        
-        # Add some incorrect passwords of different lengths
-        for _ in range(count - 1):
-            length = secrets.randbelow(10) + 5  # 5-14 characters
-            incorrect_pass = ''.join(secrets.choice(string.ascii_letters + string.digits) 
-                                    for _ in range(length))
-            passwords.append(incorrect_pass)
-        
-        return passwords
-    
-    def analyze_mitigation_system(self, mitigation_name, username, passwords, trials=10):
-        """Analyze timing characteristics of a verification method with a specific mitigation system"""
-        # Create a wrapper function that calls verify_password with the specific mitigation
-        def verify_with_mitigation(username, password):
-            return self.user_store.verify_password(username, password, mitigation_name)
-        
+
+    def analyze_mitigation_system(self, mitigation_name, phone, email, username, first, last, password, trials=10):
+        """
+        Analyze timing characteristics of a specific mitigation system across known fields
+        """
+        def verify_with_mitigation(_, password_attempt):
+            return self.user_store.verify_password(phone, email, username, first, last, password_attempt, mitigation_name)
+
         timed_verify = time_function(verify_with_mitigation)
-        
+        inputs = [email, username, first, last, password]
         results = []
-        
-        for password in passwords:
+
+        for attempt in inputs:
             times = []
             correct = []
-            
+
             for _ in range(trials):
-                is_valid, execution_time = timed_verify(username, password)
+                is_valid, execution_time = timed_verify(None, attempt)
                 times.append(execution_time)
                 correct.append(is_valid)
-            
+
             avg_time = statistics.mean(times)
             std_dev = statistics.stdev(times) if len(times) > 1 else 0
             is_correct = any(correct)
-            
+
             results.append({
-                'password': password,
+                'password': attempt,
                 'is_correct': is_correct,
                 'avg_time': avg_time,
                 'std_dev': std_dev,
                 'times': times
             })
-        
-        # If using mitigation, make sure to flush the queue
+
         if mitigation_name != 'none':
-          MITIGATION_SYSTEMS[mitigation_name].flush()
-        
+            MITIGATION_SYSTEMS[mitigation_name].flush()
+
         return results
-    
-    # def compare_mitigation_systems(self, username, correct_password, password_count=10, trials=10):
-    #     """Compare timing characteristics of different mitigation systems"""
-    #     mitigation_systems = list(MITIGATION_SYSTEMS.keys())
-        
-    #     passwords = self.generate_passwords(correct_password, password_count)
-    #     all_results = {}
-        
-    #     for mitigation in mitigation_systems:
-    #         print(f"Testing mitigation system: {mitigation}")
-            
-    #         if mitigation != 'none':
-    #           MITIGATION_SYSTEMS[mitigation].start()
-                
-    #         results = self.analyze_mitigation_system(mitigation, username, passwords, trials)
-    #         all_results[mitigation] = results
 
-    #         if mitigation != 'none':
-    #           MITIGATION_SYSTEMS[mitigation].stop()
-            
-    #     return all_results
-    
-    # def plot_results(self, all_results):
-    #     """Plot timing comparison results"""
-    #     mitigation_systems = list(all_results.keys())
-    #     fig, axes = plt.subplots(len(mitigation_systems), 1, figsize=(10, 12), sharex=True)
-        
-    #     # Handle case with only one mitigation system
-    #     if len(mitigation_systems) == 1:
-    #         axes = [axes]
-        
-    #     for i, mitigation in enumerate(mitigation_systems):
-    #         results = all_results[mitigation]
-    #         correct_times = [r['avg_time'] for r in results if r['is_correct']]
-    #         incorrect_times = [r['avg_time'] for r in results if not r['is_correct']]
-            
-    #         # Calculate statistics
-    #         correct_mean = statistics.mean(correct_times) if correct_times else 0
-    #         incorrect_mean = statistics.mean(incorrect_times) if incorrect_times else 0
-    #         time_diff = abs(correct_mean - incorrect_mean)
-            
-    #         # Plot data
-    #         ax = axes[i]
-    #         x_positions = range(len(results))
-    #         colors = ['green' if r['is_correct'] else 'red' for r in results]
-            
-    #         # Bar plot with error bars
-    #         bars = ax.bar(x_positions, [r['avg_time'] for r in results], 
-    #                       yerr=[r['std_dev'] for r in results], 
-    #                       color=colors, alpha=0.7)
-            
-    #         # Add labels and statistics
-    #         ax.set_title(f"Mitigation: {mitigation} (Diff: {time_diff:.6f}s)")
-    #         ax.set_ylabel("Time (seconds)")
-    #         ax.grid(True, linestyle='--', alpha=0.7)
-            
-    #         # Add legend
-    #         ax.axhline(y=correct_mean, color='green', linestyle='-', alpha=0.5, label=f"Correct Mean: {correct_mean:.6f}s")
-    #         ax.axhline(y=incorrect_mean, color='red', linestyle='-', alpha=0.5, label=f"Incorrect Mean: {incorrect_mean:.6f}s")
-    #         ax.legend()
-        
-    #     axes[-1].set_xlabel("Password Trials")
-    #     plt.tight_layout()
-    #     plt.savefig('mitigation_timing_analysis.png')
-    #     plt.close()
-        
-    #     return 'mitigation_timing_analysis.png'
-    
+    def compare_mitigation_systems(self, phone, email, username, first, last, password, trials=10):
+        """
+        Compare all available mitigation systems using known user data
+        """
+        all_results = {}
+        for mitigation in MITIGATION_SYSTEMS.keys():
+            print(f"Testing mitigation system: {mitigation}")
+            if mitigation != 'none':
+                MITIGATION_SYSTEMS[mitigation].start()
+
+            results = self.analyze_mitigation_system(mitigation, phone, email, username, first, last, password, trials)
+            all_results[mitigation] = results
+
+            if mitigation != 'none':
+                MITIGATION_SYSTEMS[mitigation].stop()
+        return all_results
+
     def calculate_epoch_changes(self, all_results, q_precision=0.01):
-      """
-      Count epoch changes based on changes in timing quantum q.
-      Each time timing crosses into a different bin (quantum), we register a change.
-      
-      Args:
-          all_results: dict of mitigation -> list of result dicts
-          q_precision: float, the width of each timing quantum (e.g., 0.01s)
-      """
-      epoch_changes = {}
+        """
+        Count epoch changes based on timing quantum changes.
+        """
+        epoch_changes = {}
 
-      for mitigation, results in all_results.items():
-          q_epochs = []
-          for result in results:
-              for t in result["times"]:
-                  quantum = round(t / q_precision)
-                  q_epochs.append(quantum)
+        for mitigation, results in all_results.items():
+            q_epochs = []
+            for result in results:
+                for t in result["times"]:
+                    quantum = round(t / q_precision)
+                    q_epochs.append(quantum)
 
-          if not q_epochs:
-              epoch_changes[mitigation] = "N/A - no timing data"
-              continue
+            if not q_epochs:
+                epoch_changes[mitigation] = "N/A - no timing data"
+                continue
 
-          # Count how many times the quantum changes (sequentially)
-          changes = 0
-          for i in range(1, len(q_epochs)):
-              if q_epochs[i] != q_epochs[i - 1]:
-                  changes += 1
+            changes = sum(1 for i in range(1, len(q_epochs)) if q_epochs[i] != q_epochs[i - 1])
+            epoch_changes[mitigation] = changes
 
-          epoch_changes[mitigation] = changes
-
-      return epoch_changes
+        return epoch_changes
 
 # --------------- Demo Usage ---------------
 
-def run_timing_analysis(username="myuser", password="secretpass"):
-    """Run a complete timing analysis demonstration"""
-    # Initialize the user store
+
+def run_timing_analysis():
     store = UserStore()
-    
-    # Register the test user
     store.register_user("5551234567", "me@email.com", "myuser", "John", "Doe", "secretpass")
     
-    # Create the timing analyzer
     analyzer = TimingAnalyzer(store)
+    results = analyzer.compare_mitigation_systems(
+        phone="5551234567",
+        email="me@email.com",
+        username="myuser",
+        first="John",
+        last="Doe",
+        password="secretpass",
+        trials=5
+    )
     
-    # Run the comparison
-    print("Running timing analysis...")
-    results = analyzer.compare_mitigation_systems(username, password, password_count=5, trials=5)
-    
-    # Plot the results
-    print("Generating plot...")
-    plot_file = analyzer.plot_results(results)
-    
-    # Calculate epoch changes
-    print("Calculating epoch changes...")
     epoch_changes = analyzer.calculate_epoch_changes(results)
-    
-    print("\nEpoch changes analysis (lower is better):")
+    print("\nEpoch changes (based on timing quantum shifts):")
     for mitigation, changes in epoch_changes.items():
         print(f"  {mitigation}: {changes}")
+
+# def run_timing_analysis(username="myuser", password="secretpass"):
+#     """Run a complete timing analysis demonstration"""
+#     # Initialize the user store
+#     store = UserStore()
     
-    print(f"\nPlot saved to {plot_file}")
-    return results, epoch_changes, plot_file
+#     # Register the test user
+#     store.register_user("5551234567", "me@email.com", "myuser", "John", "Doe", "secretpass")
+    
+#     store.verify_password("5551234567", "me@email.com", "myuser", "John", "Doe", "secretpass", mitigation_system='none')
+#     store.verify_password("5551234567", "me@email.com", "myuser", "John", "Doe", "secretpass", mitigation_system='slow')
+#     store.verify_password("5551234567", "me@email.com", "myuser", "John", "Doe", "secretpass", mitigation_system='halving')
+    
+#     # Create the timing analyzer
+#     analyzer = TimingAnalyzer(store)
+    
+#     # Run the comparison
+#     # print("Running timing analysis...")
+#     # results = analyzer.compare_mitigation_systems(username, password, password_count=5, trials=5)
+    
+#     # Plot the results
+#     # print("Generating plot...")
+#     # plot_file = analyzer.plot_results(results)
+    
+#     # Calculate epoch changes
+#     # print("Calculating epoch changes...")
+#     # epoch_changes = analyzer.calculate_epoch_changes(results)
+    
+#     # print("\nEpoch changes analysis (lower is better):")
+#     # for mitigation, changes in epoch_changes.items():
+#     #     print(f"  {mitigation}: {changes}")
+    
+#     # print(f"\nPlot saved to {plot_file}")
+#     # return results, epoch_changes, plot_file
 
 if __name__ == "__main__":
     run_timing_analysis()
