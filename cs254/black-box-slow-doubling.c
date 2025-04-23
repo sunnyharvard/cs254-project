@@ -25,6 +25,60 @@ void flush_cache() {
   free(flush_array);
 }
 
+#define TOTAL_ROUNDS 50
+#define MAX_PHASES   20  
+#define MIN_PHASES   3  
+
+// Child function: uses a fixed delay and returns the round number
+int child_method(int round_num, float delay) {
+  int microseconds = (int)(delay * 1e6);
+  usleep(microseconds);
+  printf("Round %d: Slept for %.2f seconds\n", round_num, delay);
+  return round_num;
+}
+
+int generate_phase_lengths(int *phases, int *num_phases) {
+  int remaining = TOTAL_ROUNDS;
+  int count = 0;
+
+  while (remaining > 0 && count < MAX_PHASES - 1) {
+      int max_len = remaining - (MIN_PHASES - count - 1); // Ensure room for the rest
+      int len = (rand() % max_len) + 1;
+      phases[count++] = len;
+      remaining -= len;
+  }
+
+  // Final phase gets whatever is left
+  phases[count++] = remaining;
+  *num_phases = count;
+  return 0;
+}
+
+void parent_method() {
+  int phases[MAX_PHASES];
+  int num_phases = 0;
+
+  if (generate_phase_lengths(phases, &num_phases) != 0) {
+    printf("error!!");
+    return;
+  }
+
+  printf("Generated %d phases:\n", num_phases);
+  for (int i = 0; i < num_phases; i++) {
+      printf("  Phase %d: %d rounds\n", i + 1, phases[i]);
+  }
+
+  int round_counter = 1;
+  for (int i = 0; i < num_phases; i++) {
+      float delay = random_delay(0, 4);  // Delay for this phase
+      printf("Phase %d: Using delay = %.2f seconds\n", i + 1, delay);
+      for (int j = 0; j < phases[i]; j++) {
+          child_method(round_counter++, delay); // This should go into the array and be slowed down!!!
+      }
+  }
+}
+
+
 // Fibonacci (target func example)
 long long fibonacci(int n) {
   if (n <= 1)
