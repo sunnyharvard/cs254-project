@@ -16,6 +16,8 @@ from .models import db, Users, JWTTokenBlocklist
 from .config import BaseConfig
 import requests
 
+from supabase import create_client, Client
+
 rest_api = Api(version="1.0", title="Users API")
 
 
@@ -23,14 +25,17 @@ rest_api = Api(version="1.0", title="Users API")
     Flask-Restx models for api request and response data
 """
 
-signup_model = rest_api.model('SignUpModel', {"username": fields.String(required=True, min_length=2, max_length=32),
+signup_model = rest_api.model('SignUpModel', {"phone_number": fields.String(required=True, min_length=2, max_length=9),
+                                              "username": fields.String(required=True, min_length=2, max_length=32),
                                               "email": fields.String(required=True, min_length=4, max_length=64),
                                               "password": fields.String(required=True, min_length=4, max_length=16)
                                               })
 
-login_model = rest_api.model('LoginModel', {"email": fields.String(required=True, min_length=4, max_length=64),
-                                            "password": fields.String(required=True, min_length=4, max_length=16)
-                                            })
+login_model = rest_api.model('LoginModel', {"phone_number": fields.String(required=True, min_length=2, max_length=9),
+                                              "username": fields.String(required=True, min_length=2, max_length=32),
+                                              "email": fields.String(required=True, min_length=4, max_length=64),
+                                              "password": fields.String(required=True, min_length=4, max_length=16)
+                                              })
 
 user_edit_model = rest_api.model('UserEditModel', {"userID": fields.String(required=True, min_length=1, max_length=32),
                                                    "username": fields.String(required=True, min_length=2, max_length=32),
@@ -90,28 +95,61 @@ class Register(Resource):
        Creates a new user by taking 'signup_model' input
     """
 
+    # @rest_api.expect(signup_model, validate=True)
+    # def post(self):
+
+    #     req_data = request.get_json()
+
+    #     _username = req_data.get("username")
+    #     _email = req_data.get("email")
+    #     _password = req_data.get("password")
+
+    #     user_exists = Users.get_by_email(_email)
+    #     if user_exists:
+    #         return {"success": False,
+    #                 "msg": "Email already taken"}, 400
+
+    #     new_user = Users(username=_username, email=_email)
+
+    #     new_user.set_password(_password)
+    #     new_user.save()
+    supabase: Client = create_client(BaseConfig.DB_HOST, BaseConfig.DB_ANONKEY)
     @rest_api.expect(signup_model, validate=True)
     def post(self):
+        input_data = request.get_json()
 
-        req_data = request.get_json()
+        try:
+            # Insert into "profiles" table
+            response = supabase.table("profiles").insert({
+                "phone_number": input_data.get("phone_number"),
+                "username": input_data.get("username"),
+                "email": input_data.get("email"),
+                "password": input_data.get("password"),
+            }).execute()
 
-        _username = req_data.get("username")
-        _email = req_data.get("email")
-        _password = req_data.get("password")
+            if response.get("error"):
+                print(f"Error: {response['error']['message']}")
+                return {
+                    "status": "error",
+                    "message": response['error']['message']
+                }
 
-        user_exists = Users.get_by_email(_email)
-        if user_exists:
-            return {"success": False,
-                    "msg": "Email already taken"}, 400
+            default_values = {
+                "phone_number": "",
+                "username": "",
+                "email": "",
+                "password": ""
+            }
+            
+            return {"success": True,
+                        "msg": "The user was successfully registered"}, 200
 
-        new_user = Users(username=_username, email=_email)
-
-        new_user.set_password(_password)
-        new_user.save()
-
-        return {"success": True,
-                "userID": new_user.id,
-                "msg": "The user was successfully registered"}, 200
+        except Exception as e:
+            print(f"Unexpected error: {str(e)}")
+            return {
+                "status": "error",
+                "message": "Unexpected error occurred."
+            }        
 
 
 @rest_api.route('/api/users/login')

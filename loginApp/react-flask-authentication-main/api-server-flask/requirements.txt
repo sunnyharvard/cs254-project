@@ -36,6 +36,7 @@ Werkzeug==2.1.2
 zipp==3.11.0
 python-dotenv 
 psycopg2-binary
+supabase
 
 # flask_mysqldb
 # psycopg2-binary

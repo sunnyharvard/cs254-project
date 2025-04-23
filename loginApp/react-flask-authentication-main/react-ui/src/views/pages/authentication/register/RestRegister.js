@@ -109,13 +109,19 @@ const RestRegister = ({ ...others }) => {
     return (
         <React.Fragment>
             <Formik
+            // Phone Number
+            // Username
+            // Email
+            // Password
                 initialValues={{
+                    phone_number: '',
                     username: '',
                     email: '',
                     password: '',
                     submit: null
                 }}
                 validationSchema={Yup.object().shape({
+                    phone_number: Yup.number().required('Must be a valid number').required('Phone Number is required'),
                     email: Yup.string().email('Must be a valid email').max(255).required('Email is required'),
                     username: Yup.string().required('Username is required'),
                     password: Yup.string().max(255).required('Password is required')
@@ -124,6 +130,7 @@ const RestRegister = ({ ...others }) => {
                     try {
                         axios
                             .post( configData.API_SERVER + 'users/register', {
+                                phone_number: values.phone_number,
                                 username: values.username,
                                 password: values.password,
                                 email: values.email
@@ -196,6 +203,29 @@ const RestRegister = ({ ...others }) => {
                                 <FormHelperText error id="standard-weight-helper-text--register">
                                     {' '}
                                     {errors.email}{' '}
+                                </FormHelperText>
+                            )}
+                        </FormControl>
+
+                        <FormControl fullWidth error={Boolean(touched.phone_number && errors.phone_number)} className={classes.loginInput}>
+                            <InputLabel htmlFor="outlined-adornment-email-register">Phone Number</InputLabel>
+                            <OutlinedInput
+                                id="outlined-adornment-email-register"
+                                type="phone_number"
+                                value={values.phone_number}
+                                name="phone_number"
+                                onBlur={handleBlur}
+                                onChange={handleChange}
+                                inputProps={{
+                                    classes: {
+                                        notchedOutline: classes.notchedOutline
+                                    }
+                                }}
+                            />
+                            {touched.phone_number && errors.phone_number && (
+                                <FormHelperText error id="standard-weight-helper-text--register">
+                                    {' '}
+                                    {errors.phone_number}{' '}
                                 </FormHelperText>
                             )}
                         </FormControl>

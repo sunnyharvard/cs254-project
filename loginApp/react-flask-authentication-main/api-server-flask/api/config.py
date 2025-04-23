@@ -29,6 +29,7 @@ class BaseConfig():
     DB_USERNAME = os.getenv('DB_USERNAME' , None)
     DB_PASS     = os.getenv('DB_PASS'     , None)
     DB_HOST     = os.getenv('DB_HOST'     , None)
+    DB_ANONKEY    = os.getenv('DB_ANONKEY'     , None)
     DB_PORT     = os.getenv('DB_PORT'     , None)
     DB_NAME     = os.getenv('DB_NAME'     , None)
 
@@ -45,6 +46,7 @@ class BaseConfig():
                 DB_USERNAME,
                 DB_PASS,
                 DB_HOST,
+                DB_ANONKEY,
                 DB_PORT,
                 DB_NAME
             ) 
