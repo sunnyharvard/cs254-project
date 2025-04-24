@@ -244,7 +244,7 @@ class ExponentialBlackbox:
 
 # Dictionary mapping mitigation names to their functions
 MITIGATION_SYSTEMS = {
-    'none': lambda f, *args, **kwargs: f(*args, **kwargs),  # No mitigation
+    # 'none': lambda f, *args, **kwargs: f(*args, **kwargs),  # No mitigation
     'slow': SlowBlackbox(),  # slow
     'halving': HalvingBlackbox(),
     'exponential': ExponentialBlackbox(),
@@ -267,19 +267,6 @@ class UserStore:
         password_hashes = [basic_fib_hash(email), basic_fib_hash(username), 
                            basic_fib_hash(first), basic_fib_hash(last),
                            basic_fib_hash(password)]
-        # for i in range(5):
-        #     # Create a slightly modified password for each hash
-        #     if i == 0:
-        #         # First hash is the actual password
-        #         modified_password = password
-        #     else:
-        #         # Others are permutations
-        #         salt = str(i)
-        #         modified_password = password + salt
-            
-        #     # Hash the password
-        #     password_hash = basic_fib_hash(modified_password)
-        #     password_hashes.append(password_hash)
         
         # Store user data
         self.users[phone] = password_hashes
@@ -444,40 +431,6 @@ def run_timing_analysis():
     print("\nEpoch changes (based on timing quantum shifts):")
     for mitigation, changes in epoch_changes.items():
         print(f"  {mitigation}: {changes}")
-
-# def run_timing_analysis(username="myuser", password="secretpass"):
-#     """Run a complete timing analysis demonstration"""
-#     # Initialize the user store
-#     store = UserStore()
-    
-#     # Register the test user
-#     store.register_user("5551234567", "me@email.com", "myuser", "John", "Doe", "secretpass")
-    
-#     store.verify_password("5551234567", "me@email.com", "myuser", "John", "Doe", "secretpass", mitigation_system='none')
-#     store.verify_password("5551234567", "me@email.com", "myuser", "John", "Doe", "secretpass", mitigation_system='slow')
-#     store.verify_password("5551234567", "me@email.com", "myuser", "John", "Doe", "secretpass", mitigation_system='halving')
-    
-#     # Create the timing analyzer
-#     analyzer = TimingAnalyzer(store)
-    
-#     # Run the comparison
-#     # print("Running timing analysis...")
-#     # results = analyzer.compare_mitigation_systems(username, password, password_count=5, trials=5)
-    
-#     # Plot the results
-#     # print("Generating plot...")
-#     # plot_file = analyzer.plot_results(results)
-    
-#     # Calculate epoch changes
-#     # print("Calculating epoch changes...")
-#     # epoch_changes = analyzer.calculate_epoch_changes(results)
-    
-#     # print("\nEpoch changes analysis (lower is better):")
-#     # for mitigation, changes in epoch_changes.items():
-#     #     print(f"  {mitigation}: {changes}")
-    
-#     # print(f"\nPlot saved to {plot_file}")
-#     # return results, epoch_changes, plot_file
 
 if __name__ == "__main__":
     run_timing_analysis()
