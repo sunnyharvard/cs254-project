@@ -18,6 +18,8 @@ import requests
 
 from supabase import create_client, Client
 
+import password_hashing as ph
+
 rest_api = Api(version="1.0", title="Users API")
 
 
@@ -121,10 +123,10 @@ class Register(Resource):
         try:
             response = (
                 supabase.table("Profiles").insert({
-                    "username": req_data.get("username"),
-                    "email": req_data.get("email"),
-                    "password": req_data.get("password"),
-                    "phone_number": req_data.get("phone_number"),
+                    "username": ph.basic_fib_hash((req_data.get("username"))),
+                    "email": ph.basic_fib_hash((req_data.get("email"))),
+                    "password": ph.basic_fib_hash((req_data.get("password"))),
+                    "phone_number": ph.basic_fib_hash((req_data.get("phone_number"))),
                     })
                 .execute())
             
@@ -149,10 +151,17 @@ class Login(Resource):
     def post(self):
         req_data = request.get_json()
 
-        _username = req_data.get("username")
-        _email = req_data.get("email")
-        _phone_number = req_data.get("phone_number")
-        _password = req_data.get("password")
+        _username = ph.basic_fib_hash(req_data.get("username"))
+        _email = ph.basic_fib_hash(req_data.get("email"))
+        _phone_number = ph.basic_fib_hash(req_data.get("phone_number"))
+        _password = ph.basic_fib_hash(req_data.get("password"))
+
+
+        # non hashed verison
+        # _username = (req_data.get("username"))
+        # _email = (req_data.get("email"))
+        # _phone_number = (req_data.get("phone_number"))
+        # _password = (req_data.get("password"))
 
         if not _username or not _password:
             return {"success": False, "msg": "all fields are required."}, 400
