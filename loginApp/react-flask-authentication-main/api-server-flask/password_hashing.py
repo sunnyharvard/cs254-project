@@ -20,37 +20,42 @@ import string
 def basic_fib_hash(password, max_length=50):
     """
     Basic Fibonacci hash implementation with potential timing vulnerability.
-    
+
     Computes a hash by adding ASCII values of characters and using them to generate
     Fibonacci-like sequences. Limited to max_length for practical reasons.
     """
+
     if not password:
-        return False
-    
+        return None
+
     if len(password) > max_length:
         password = password[:max_length]
-    
+
+    start_time = time.time()*1000 #Start timer
+
     # Initialize hash value
     hash_value = 0
-    
+
     for char in password:  # timing grows with number of characters in password
-        # Get ASCII value of character
         ascii_val = ord(char)
-        
+
         # Compute Fibonacci-like sequence to ascii_val steps
         a, b = 1, 1
-        for _ in range(ascii_val):
+        for _ in range(ascii_val*100):
             a, b = b, a + b
-            # Print to simulate computational work that might be timed
-            print(f"Finished step in character processing", end='\r')
-        
-        # Add result to hash value
-        hash_value += b
-    
-    # Make it a fixed length by using standard hashing algorithm
-    final_hash = hashlib.sha256(str(hash_value).encode()).hexdigest()
-    return final_hash
+            # print(f"Finished step in character processing", end='\r')
 
+        hash_value += b
+
+    final_hash = hashlib.sha256(str(hash_value).encode()).hexdigest()
+
+    end_time = time.time()*1000  # End timer
+    elapsed = end_time - start_time
+    
+    # print(f"\nHashing took {elapsed:.4f} seconds")
+    print(f"\nHashing {password} took {elapsed:.4f} milliseconds")
+
+    return final_hash
 # --------------- Slow Blackbox Mitigation System ---------------
 
 class SlowBlackbox:
